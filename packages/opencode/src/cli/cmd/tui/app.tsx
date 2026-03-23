@@ -43,6 +43,7 @@ import open from "open"
 import { writeHeapSnapshot } from "v8"
 import { PromptRefProvider, usePromptRef } from "./context/prompt"
 import { registerKiloCommands } from "@/kilocode/kilo-commands" // kilocode_change
+import { registerRemoteCommand } from "@/kilocode/remote-tui" // kilocode_change
 import { initializeTUIDependencies } from "@kilocode/kilo-gateway/tui" // kilocode_change
 import { TuiConfigProvider } from "./context/tui-config"
 import { TuiConfig } from "@/config/tui"
@@ -261,9 +262,14 @@ function App() {
   }
   const [terminalTitleEnabled, setTerminalTitleEnabled] = createSignal(kv.get("terminal_title_enabled", true))
 
+  // kilocode_change start — notify server which session the user is viewing (for live session indicators)
   createEffect(() => {
-    console.log(JSON.stringify(route.data))
+    const sessionID = route.data.type === "session" ? route.data.sessionID : undefined
+    // Access the underlying @hey-api client (protected) to call a route not yet in the generated SDK.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ;(sdk.client as any).client.post({ url: "/session/viewed", body: { sessionID } }).catch(() => {})
   })
+  // kilocode_change end
 
   // Update terminal window title based on current route and session
   createEffect(() => {
@@ -706,6 +712,7 @@ function App() {
     TextAttributes: TextAttributes,
   })
   registerKiloCommands(useSDK)
+  registerRemoteCommand(useSDK)
   // kilocode_change end
 
   // kilocode_change - Delete OpenRouter Alert
