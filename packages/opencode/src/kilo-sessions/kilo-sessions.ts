@@ -220,7 +220,6 @@ export namespace KiloSessions {
     if (remote) return
     if (ingestDisabled) return
     if (enabling) return enabling
-
     const seq = ++remoteSeq
     enabling = (async () => {
       const token = await kilocodeToken()
@@ -229,9 +228,10 @@ export namespace KiloSessions {
       }
 
       const valid = await authValid(token)
-      if (!valid) {
+      if (valid === false) {
         throw new Error("Unable to enable remote: invalid or expired Kilo credentials. Run `kilo auth login`.")
       }
+      if (valid === undefined) throw new Error("Unable to enable remote: failed to verify Kilo credentials.")
 
       const url = (process.env["KILO_SESSION_INGEST_URL"] ?? "https://ingest.kilosessions.ai")
         .replace(/^https:\/\//, "wss://")
@@ -304,6 +304,7 @@ export namespace KiloSessions {
 
   export function disableRemote() {
     remoteSeq += 1
+    enabling = undefined
     if (!remote) return
     remote.sender.dispose()
     remote.conn.close()
